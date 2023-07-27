@@ -1,6 +1,3 @@
-// This is your Prisma schema file,
-// learn more about it in the docs: https://pris.ly/d/prisma-schema
-
 generator client {
   provider = "prisma-client-js"
 }
@@ -10,42 +7,93 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
-model User{
-  id String  @id @default(cuid())
-  username String @unique
-  email String @unique
-  fullName String
-  password String
-  items Item[] @relation("Seller")
-  bids Bid[] @relation("Bidder")
-  createdAt DateTime @default(now())
-  updateAt DateTime
+model Account {
+  id                String  @id @default(cuid())
+  userId            String
+  type              String
+  provider          String
+  providerAccountId String
+  refresh_token     String?
+  access_token      String?
+  expires_at        Int?
+  token_type        String?
+  scope             String?
+  id_token          String?
+  session_state     String?
+  user              User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, providerAccountId])
 }
 
-model Item{
-  id String @id @default(cuid())
-  name String
-  imageUrl String?
-  description String?
-  startingBid Float
-  currentBid Float
-  startTime DateTime
-  endTime DateTime
-  sellerId String
-  seller User @relation("Seller",fields: [sellerId],references: [id])
-  bids Bid[]
-  createdAt DateTime @default(now())
-  updateAt DateTime @updatedAt
-
+model Session {
+  id           String   @id @default(cuid())
+  sessionToken String   @unique
+  userId       String
+  expires      DateTime
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 }
 
-model Bid{
-  id String @id @default(cuid())
-  amount Float
-  bidder User @relation("Bidder",fields: [bidderId],references: [id])
-  bidderId String
-  item Item @relation(fields: [itemId], references: [id])
-  itemId String
+model VerificationToken {
+  identifier String
+  token      String   @unique
+  expires    DateTime
+
+  @@unique([identifier, token])
+}
+
+model User {
+  id            String     @id @default(cuid())
+  username      String     @unique
+  name          String?
+  email         String     @unique
+  address       String?
+  password      String?
+  emailVerified DateTime?
+  image         String?
+  creditAmount  Int?
+  phoneNumber   String?
+  assets        Asset[]    @relation("sellers")
+  bidAssets     BidAsset[] @relation("bidder")
+  accounts      Account[]
+  sessions      Session[]
+}
+
+model Asset {
+  id           String        @id @default(cuid())
+  imageUrl     String        @unique
+  name         String
+  description  String
+  openingPrice Int?
+  endTime      DateTime?
+  sellerId     String
+  seller       User          @relation("sellers", fields: [sellerId], references: [id])
+  createdAt    DateTime      @default(now())
+  updatedAt    DateTime?     @default(now()) @updatedAt
+  deletedAt    DateTime?
+  bidAssets    BidAsset[]    @relation("bidAsset")
+  transactions Transaction[]
+}
+
+model BidAsset {
+  id           String        @id @default(cuid())
+  assetId      String
+  userId       String
+  bidAmount    Int
+  currentPrice Int
+  createdAt    DateTime      @default(now())
+  updatedAt    DateTime      @updatedAt
+  deletedAt    DateTime?
+  asset        Asset?        @relation("bidAsset", fields: [assetId], references: [id])
+  bidder       User          @relation("bidder", fields: [userId], references: [id])
+  transaction  Transaction[]
+}
+
+model Transaction {
+  id        String   @id @default(cuid())
+  assetId   String
+  bidderId  String
+  bidder    BidAsset @relation(fields: [bidderId], references: [id])
+  assets    Asset    @relation(fields: [assetId], references: [id])
+  price     Int
   createdAt DateTime @default(now())
-  updateAt DateTime @updatedAt
 }
